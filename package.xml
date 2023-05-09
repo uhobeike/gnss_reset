@@ -11,6 +11,7 @@
 
   <depend>rclcpp</depend>
   <depend>ros2launch</depend>
+  <depend>gnss_reset_msgs</depend>
 
   <depend>backword_ros</depend>
 
