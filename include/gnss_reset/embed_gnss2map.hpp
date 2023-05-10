@@ -18,14 +18,16 @@ class EmbedGnss2MapNode : public rclcpp::Node
   EmbedGnss2MapNode();
 
  protected:
-  void initPublisher();
+  void initPubSub();
 
   void embedGnss2Map();
 
+  void mapCb(nav_msgs::msg::OccupancyGrid::ConstSharedPtr msg);
   void publishMapWithGnss();
 
  private:
   rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_map_with_gnss_;
+  rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr sub_map_;
 
   gnss_reset_msgs::msg::OccupancyGridWithNavSatFix map_with_gnss_;
 };
