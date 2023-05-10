@@ -6,6 +6,8 @@ Panels:
       Expanded:
         - /Global Options1
         - /Status1
+        - /Map1/Update Topic1
+        - /Map2/Update Topic1
       Splitter Ratio: 0.5529412031173706
     Tree Height: 704
   - Class: rviz_common/Selection
@@ -59,13 +61,13 @@ Visualization Manager:
         Filter size: 10
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /map_with_gnss_
+        Value: /map_with_gnss
       Update Topic:
         Depth: 5
-        Durability Policy: Volatile
+        Durability Policy: Transient Local
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /map_with_gnss__updates
+        Value: /map_with_gnss_updates
       Use Timestamp: false
       Value: true
     - Alpha: 0.699999988079071
@@ -83,7 +85,7 @@ Visualization Manager:
         Value: /map
       Update Topic:
         Depth: 5
-        Durability Policy: Volatile
+        Durability Policy: Transient Local
         History Policy: Keep Last
         Reliability Policy: Reliable
         Value: /map_updates
@@ -153,7 +155,7 @@ Visualization Manager:
       Pitch: 1.5697963237762451
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.1435844898223877
+      Yaw: 3.1385843753814697
     Saved: ~
 Window Geometry:
   Displays:
