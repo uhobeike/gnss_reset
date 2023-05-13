@@ -19,6 +19,8 @@ def generate_launch_description():
     gnss_reset_dir = get_package_share_directory('gnss_reset')
     gnss_reset_launch_dir = os.path.join(
         gnss_reset_dir, 'launch')
+    rosbag_dir = os.path.join(
+        gnss_reset_dir.replace('install/gnss_reset/share', 'src'), 'config', 'rosbag', 'map_with_gnss')
 
     use_rviz = LaunchConfiguration('use_rviz')
 
@@ -31,6 +33,7 @@ def generate_launch_description():
         name="embed_gnss2map_node",
         package='gnss_reset',
         executable='embed_gnss2map',
+        parameters=[{'output_rosbag_path': rosbag_dir}],
         output='screen',
     )
 
