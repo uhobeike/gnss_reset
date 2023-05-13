@@ -28,6 +28,8 @@ class EmbedGnss2MapNode : public rclcpp::Node
   void mapCb(nav_msgs::msg::OccupancyGrid::ConstSharedPtr msg);
   void publishMapWithGnss();
   void writeRosbag();
+  std::string avoidDirectoryNameCollision(std::string& output_rosbag_path);
+  bool isDirectoryPresent(std::string& dir_path);
 
  private:
   rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_map_with_gnss_;

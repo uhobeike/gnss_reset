@@ -1,3 +1,6 @@
+#include <filesystem>
+#include <regex>
+
 #include "gnss_reset/embed_gnss2map.hpp"
 
 namespace embed_gnss2map
@@ -65,7 +68,18 @@ void EmbedGnss2MapNode::writeRosbag()
   rosbag2_storage::StorageOptions storage_options;
   storage_options.uri = output_rosbag_path_;
   storage_options.storage_id = "sqlite3";
-  writer_->open(storage_options);
+
+  try
+  {
+    if (not isDirectoryPresent(output_rosbag_path_))
+      writer_->open(storage_options);
+    else
+      writer_->open(avoidDirectoryNameCollision(output_rosbag_path_));
+  }
+  catch (const std::exception& e)
+  {
+    std::cerr << "Caught an exception: " << e.what() << '\n';
+  }
 
   rosbag2_storage::TopicMetadata topic_metadata;
   topic_metadata.name = pub_map_with_gnss_->get_topic_name();
@@ -76,6 +90,36 @@ void EmbedGnss2MapNode::writeRosbag()
   auto message = map_with_gnss_;
   auto timestamp = rclcpp::Time(message.header.stamp);
   writer_->write(message, topic_metadata.name, timestamp);
+}
+
+std::string EmbedGnss2MapNode::avoidDirectoryNameCollision(std::string& output_rosbag_path)
+{
+  int index = -1;
+  while (isDirectoryPresent(output_rosbag_path))
+  {
+    std::regex pattern(".*_(\\d+)$");
+    std::smatch match;
+    if (std::regex_match(output_rosbag_path, pattern))
+    {
+      std::regex pattern("_(\\d+)$");
+      std::regex_search(output_rosbag_path, match, pattern);
+      index = std::stoi(match[1].str());
+      output_rosbag_path = std::regex_replace(output_rosbag_path, pattern, "");
+    }
+
+    ++index;
+    output_rosbag_path = output_rosbag_path + "_" + std::to_string(index);
+  }
+  return output_rosbag_path;
+}
+
+bool EmbedGnss2MapNode::isDirectoryPresent(std::string& dir_path_str)
+{
+  std::filesystem::path dir_path(dir_path_str);
+
+  if (std::filesystem::exists(dir_path) && std::filesystem::is_directory(dir_path)) return true;
+
+  return false;
 }
 
 }  // namespace embed_gnss2map
