@@ -6,9 +6,8 @@
 
 #include "rclcpp/rclcpp.hpp"
 
-#include <rosbag2_cpp/converter_options.hpp>
-#include <rosbag2_cpp/reader.hpp>
-#include <rosbag2_cpp/readers/sequential_reader.hpp>
+#include "rosbag2_cpp/converter_options.hpp"
+#include "rosbag2_cpp/reader.hpp"
 
 #include "gnss_reset_msgs/msg/occupancy_grid_with_nav_sat_fix.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
@@ -23,6 +22,8 @@ class GnssResetNode : public rclcpp::Node
 
  protected:
   void initPublisher();
+  void initTimer();
+  void on_timer();
   void setParam();
   void getParam();
 
@@ -33,6 +34,7 @@ class GnssResetNode : public rclcpp::Node
   rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_map_with_gnss_;
 
   std::shared_ptr<rosbag2_cpp::Reader> reader_;
+  rclcpp::TimerBase::SharedPtr timer_;
 
   gnss_reset_msgs::msg::OccupancyGridWithNavSatFix map_with_gnss_;
 
