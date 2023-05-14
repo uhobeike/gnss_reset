@@ -1,0 +1,26 @@
+rosbag2_bagfile_information:
+  version: 5
+  storage_identifier: sqlite3
+  duration:
+    nanoseconds: 0
+  starting_time:
+    nanoseconds_since_epoch: 1683871480354753491
+  message_count: 1
+  topics_with_message_count:
+    - topic_metadata:
+        name: /map_with_gnss
+        type: gnss_reset_msgs/msg/OccupancyGridWithNavSatFix
+        serialization_format: cdr
+        offered_qos_profiles: ""
+      message_count: 1
+  compression_format: ""
+  compression_mode: ""
+  relative_file_paths:
+    - map_with_gnss_0.db3
+  files:
+    - path: map_with_gnss_0.db3
+      starting_time:
+        nanoseconds_since_epoch: 1683871480354753491
+      duration:
+        nanoseconds: 0
+      message_count: 1

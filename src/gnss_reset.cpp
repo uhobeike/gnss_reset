@@ -2,15 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "gnss_reset/gnss_reset.hpp"
-#include <rosbag2_cpp/converter_interfaces/serialization_format_converter.hpp>
-#include <rosbag2_cpp/serialization_format_converter_factory.hpp>
+
 #include "rosbag2_cpp/converter_interfaces/serialization_format_converter.hpp"
-#include "rosbag2_cpp/readers/sequential_reader.hpp"
-#include "rosbag2_cpp/types/introspection_message.hpp"
 #include "rosbag2_cpp/typesupport_helpers.hpp"
 
-#include "rclcpp/node.hpp"
-#include "rclcpp/serialization.hpp"
+using namespace std::chrono_literals;
 
 namespace gnss_reset
 {
@@ -20,6 +16,7 @@ GnssResetNode::GnssResetNode() : Node("gnss_reset_node")
   setParam();
   getParam();
   initPublisher();
+  initTimer();
   readRosbag();
 }
 
@@ -66,20 +63,20 @@ void GnssResetNode::readRosbag()
       gnss_reset_msgs::msg::OccupancyGridWithNavSatFix map_with_gnss;
       ros_message->message = &map_with_gnss;
       cdr_deserializer->deserialize(serialized_message, type_support, ros_message);
+
       map_with_gnss_ = map_with_gnss;
     }
   }
-  publishMapWithGnss();
 }
 
 void GnssResetNode::publishMapWithGnss()
 {
   auto occupancy_grid = nav_msgs::msg::OccupancyGrid();
 
-  occupancy_grid.header.stamp = now();
   occupancy_grid.header = map_with_gnss_.header;
-  occupancy_grid.info.map_load_time = now();
   occupancy_grid.info = map_with_gnss_.info;
+  occupancy_grid.header.stamp = now();
+  occupancy_grid.info.map_load_time = now();
 
   int map_size = map_with_gnss_.info.width * map_with_gnss_.info.height;
   occupancy_grid.data.resize(map_size);
@@ -88,6 +85,13 @@ void GnssResetNode::publishMapWithGnss()
             std::begin(occupancy_grid.data));
 
   pub_map_with_gnss_->publish(occupancy_grid);
+}
+
+void GnssResetNode::on_timer() { publishMapWithGnss(); }
+
+void GnssResetNode::initTimer()
+{
+  timer_ = create_wall_timer(1000ms, std::bind(&GnssResetNode::on_timer, this));
 }
 
 }  // namespace gnss_reset
