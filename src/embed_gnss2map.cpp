@@ -1,3 +1,4 @@
+#include <Eigen/Dense>
 #include <filesystem>
 #include <regex>
 
@@ -85,35 +86,24 @@ void EmbedGnss2MapNode::getMapIndexFromRobotPoseDebug()
 {
   auto map = map_;
 
-  for (auto& data : map.data)
-  {
-    data = 1;
-  }
+  Eigen::Vector2d target(current_robot_pose_.pose.position.x, current_robot_pose_.pose.position.y);
 
-  for (auto i = 0; i < 100; ++i)
-  {
-    uint64_t index =
-        (static_cast<uint64_t>(fabs(current_robot_pose_.pose.position.y / map_.info.resolution)) +
-         i) *
-            map_.info.width +
-        (static_cast<uint64_t>(fabs(current_robot_pose_.pose.position.x / map_.info.resolution)) +
-         i);
-    map.data[index] = 99;
-    RCLCPP_INFO(get_logger(), "%ld", index);
-  }
+  for (auto& data : map.data) data = 1;
+
+  for (auto y = 0; y < map_.info.height; ++y)
+    for (auto x = 0; x < map_.info.width; ++x)
+    {
+      Eigen::Vector2d reference(x * map_.info.resolution, y * map_.info.resolution);
+      auto l2_norm = (target - reference).norm();
+
+      if (l2_norm < 3)
+      {
+        auto index = y * map_.info.width + x;
+        map.data[index] = 99;
+      }
+    }
+
   pub_debug_map_->publish(map);
-
-  // for (auto y = 0; y < map_.info.height; ++y)
-  // {
-  //   for (auto x = 0; x < map_.info.width; ++x)
-  //   {
-  // auto index = fabs(current_robot_pose_.pose.position.y * map_.info.resolution) * map_.info.width
-  // +
-  //              fabs(current_robot_pose_.pose.position.x * map_.info.resolution);
-  // map.data[index] = 99;
-  //     if (y % 10) pub_debug_map_->publish(map);
-  //   }
-  // }
 }
 
 void EmbedGnss2MapNode::embedGnss2Map(uint64_t index) { map_with_gnss_.gnss_data[index] = gnss_; }
