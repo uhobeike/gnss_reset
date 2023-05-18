@@ -36,7 +36,7 @@ void EmbedGnss2MapNode::initPubSub()
 void EmbedGnss2MapNode::initTimer()
 {
   debug_timer_ = create_wall_timer(
-      10s, std::bind(&EmbedGnss2MapNode::getMapIndexFromRobotPoseDebugTimerCb, this));
+      100ms, std::bind(&EmbedGnss2MapNode::getMapIndexFromRobotPoseDebugTimerCb, this));
 }
 
 void EmbedGnss2MapNode::setParam() { declare_parameter("output_rosbag_path", "map_with_gnss"); }
@@ -96,7 +96,7 @@ void EmbedGnss2MapNode::getMapIndexFromRobotPoseDebug()
       Eigen::Vector2d reference(x * map_.info.resolution, y * map_.info.resolution);
       auto l2_norm = (target - reference).norm();
 
-      if (l2_norm < 3)
+      if (l2_norm < 0.5)
       {
         auto index = y * map_.info.width + x;
         map.data[index] = 99;
