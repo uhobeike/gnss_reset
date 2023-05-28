@@ -22,10 +22,10 @@ class EmbedGnss2MapNode : public rclcpp::Node
 {
 public:
   EmbedGnss2MapNode();
+  ~EmbedGnss2MapNode();
 
 protected:
   void initPubSub();
-  void initTimer();
   void initTf();
   void setParam();
   void getParam();
@@ -33,8 +33,7 @@ protected:
   void getRobotPose(geometry_msgs::msg::PoseStamped & current_robot_pose);
 
   uint64_t getMapIndexFromRobotPose();
-  void getMapIndexFromRobotPoseDebug();
-  void getMapIndexFromRobotPoseDebugTimerCb();
+  void getMapIndexFromRobotPoseDebug(int index);
   void embedGnss2Map(uint64_t index);
 
   void gnssCb(sensor_msgs::msg::NavSatFix::ConstSharedPtr msg);
@@ -49,7 +48,6 @@ private:
   rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_debug_map_;
   rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr sub_gnss_;
   rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr sub_map_;
-  rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr sub_robot_pose_;
 
   rclcpp::TimerBase::SharedPtr debug_timer_;
   rclcpp::Clock::SharedPtr clock_;
@@ -63,7 +61,7 @@ private:
   gnss_reset_msgs::msg::OccupancyGridWithNavSatFix map_with_gnss_;
   nav_msgs::msg::OccupancyGrid map_;
 
-  bool get_robot_pose_;
+  bool get_robot_pose_, get_map_;
   std::string output_rosbag_path_;
 };
 
