@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2023 Tatsuhiro Ikebe <beike315@icloud.com>
+// SPDX-License-Identifier: Apache-2.0
+
 #include "gnss_reset/embed_gnss2map.hpp"
 
 #include <Eigen/Dense>
@@ -11,8 +14,10 @@ namespace embed_gnss2map
 EmbedGnss2MapNode::EmbedGnss2MapNode() : Node("embed_gnss2map_node"), get_robot_pose_(false)
 {
   writer_ = std::make_shared<rosbag2_cpp::Writer>();
+  clock_ = std::make_shared<rclcpp::Clock>(RCL_SYSTEM_TIME);
   initPubSub();
-  initTimer();
+  // initTimer();
+  initTf();
   setParam();
   getParam();
 }
@@ -26,17 +31,23 @@ void EmbedGnss2MapNode::initPubSub()
   qos_profile.reliability(rclcpp::ReliabilityPolicy::Reliable);
   qos_profile.durability(rclcpp::DurabilityPolicy::TransientLocal);
   sub_gnss_ = create_subscription<sensor_msgs::msg::NavSatFix>(
-    "fix", 10, std::bind(&EmbedGnss2MapNode::gnssCb, this, std::placeholders::_1));
+    "gnss/fix", 10, std::bind(&EmbedGnss2MapNode::gnssCb, this, std::placeholders::_1));
   sub_map_ = create_subscription<nav_msgs::msg::OccupancyGrid>(
     "map", qos_profile, std::bind(&EmbedGnss2MapNode::mapCb, this, std::placeholders::_1));
-  sub_robot_pose_ = create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-    "initialpose", 1, std::bind(&EmbedGnss2MapNode::getRobotPose, this, std::placeholders::_1));
+  // sub_robot_pose_ = create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
+  //   "initialpose", 1, std::bind(&EmbedGnss2MapNode::getRobotPose, this, std::placeholders::_1));
 }
 
 void EmbedGnss2MapNode::initTimer()
 {
   debug_timer_ = create_wall_timer(
     100ms, std::bind(&EmbedGnss2MapNode::getMapIndexFromRobotPoseDebugTimerCb, this));
+}
+
+void EmbedGnss2MapNode::initTf()
+{
+  tf_buffer_ = std::make_shared<tf2_ros::Buffer>(get_clock());
+  tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 }
 
 void EmbedGnss2MapNode::setParam() { declare_parameter("output_rosbag_path", "map_with_gnss"); }
@@ -48,10 +59,12 @@ void EmbedGnss2MapNode::getParam()
 
 void EmbedGnss2MapNode::gnssCb(sensor_msgs::msg::NavSatFix::ConstSharedPtr msg)
 {
+  getRobotPose(current_robot_pose_);
   if (get_robot_pose_) {
     gnss_ = *msg;
-    auto index = getMapIndexFromRobotPose();
-    embedGnss2Map(index);
+    // auto index = getMapIndexFromRobotPose();
+    getMapIndexFromRobotPoseDebug();
+    // embedGnss2Map(index);
   }
 }
 
@@ -64,11 +77,27 @@ void EmbedGnss2MapNode::getMapIndexFromRobotPoseDebugTimerCb()
   }
 }
 
-void EmbedGnss2MapNode::getRobotPose(
-  geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr msg)
+void EmbedGnss2MapNode::getRobotPose(geometry_msgs::msg::PoseStamped & current_robot_pose)
 {
-  current_robot_pose_.header = msg->header;
-  current_robot_pose_.pose = msg->pose.pose;
+  while (rclcpp::ok() && not tf_buffer_->canTransform("map", "base_footprint", tf2::TimePoint())) {
+    RCLCPP_WARN(get_logger(), "Wait Can Transform");
+    rclcpp::sleep_for(std::chrono::milliseconds(100));
+  }
+
+  geometry_msgs::msg::TransformStamped transform_stamped;
+
+  try {
+    transform_stamped = tf_buffer_->lookupTransform(
+      "map", "base_footprint", rclcpp::Time(0), rclcpp::Duration::from_seconds(1.0));
+  } catch (tf2::TransformException & ex) {
+    RCLCPP_WARN(get_logger(), "%s", ex.what());
+  }
+
+  current_robot_pose.header = transform_stamped.header;
+  current_robot_pose.pose.position.x = transform_stamped.transform.translation.x;
+  current_robot_pose.pose.position.y = transform_stamped.transform.translation.y;
+  current_robot_pose.pose.orientation = transform_stamped.transform.rotation;
+
   get_robot_pose_ = true;
 }
 
@@ -84,7 +113,8 @@ void EmbedGnss2MapNode::getMapIndexFromRobotPoseDebug()
 {
   auto map = map_;
 
-  Eigen::Vector2d target(current_robot_pose_.pose.position.x, current_robot_pose_.pose.position.y);
+  Eigen::Vector2d target(
+    fabs(current_robot_pose_.pose.position.x), fabs(current_robot_pose_.pose.position.y));
 
   for (auto & data : map.data) data = 1;
 
