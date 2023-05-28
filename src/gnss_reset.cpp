@@ -46,20 +46,18 @@ void GnssResetNode::readRosbag()
 
   rosbag2_cpp::SerializationFormatConverterFactory factory;
   std::unique_ptr<rosbag2_cpp::converter_interfaces::SerializationFormatDeserializer>
-      cdr_deserializer;
+    cdr_deserializer;
   cdr_deserializer = factory.load_deserializer("cdr");
 
   auto library = rosbag2_cpp::get_typesupport_library(
-      "gnss_reset_msgs/msg/OccupancyGridWithNavSatFix", "rosidl_typesupport_cpp");
+    "gnss_reset_msgs/msg/OccupancyGridWithNavSatFix", "rosidl_typesupport_cpp");
   auto type_support = rosbag2_cpp::get_typesupport_handle(
-      "gnss_reset_msgs/msg/OccupancyGridWithNavSatFix", "rosidl_typesupport_cpp", library);
+    "gnss_reset_msgs/msg/OccupancyGridWithNavSatFix", "rosidl_typesupport_cpp", library);
   auto ros_message = std::make_shared<rosbag2_cpp::rosbag2_introspection_message_t>();
 
-  while (reader_->has_next())
-  {
+  while (reader_->has_next()) {
     auto serialized_message = reader_->read_next();
-    if (std::strcmp(serialized_message->topic_name.c_str(), "/map_with_gnss") == 0)
-    {
+    if (std::strcmp(serialized_message->topic_name.c_str(), "/map_with_gnss") == 0) {
       gnss_reset_msgs::msg::OccupancyGridWithNavSatFix map_with_gnss;
       ros_message->message = &map_with_gnss;
       cdr_deserializer->deserialize(serialized_message, type_support, ros_message);
@@ -81,8 +79,9 @@ void GnssResetNode::publishMapWithGnss()
   int map_size = map_with_gnss_.info.width * map_with_gnss_.info.height;
   occupancy_grid.data.resize(map_size);
 
-  std::copy(std::begin(map_with_gnss_.data), std::end(map_with_gnss_.data),
-            std::begin(occupancy_grid.data));
+  std::copy(
+    std::begin(map_with_gnss_.data), std::end(map_with_gnss_.data),
+    std::begin(occupancy_grid.data));
 
   pub_map_with_gnss_->publish(occupancy_grid);
 }
@@ -96,7 +95,7 @@ void GnssResetNode::initTimer()
 
 }  // namespace gnss_reset
 
-int main(int argc, char* argv[])
+int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<gnss_reset::GnssResetNode>());
