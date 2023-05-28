@@ -1,8 +1,8 @@
+#include "gnss_reset/embed_gnss2map.hpp"
+
 #include <Eigen/Dense>
 #include <filesystem>
 #include <regex>
-
-#include "gnss_reset/embed_gnss2map.hpp"
 
 using namespace std::chrono_literals;
 
@@ -26,17 +26,17 @@ void EmbedGnss2MapNode::initPubSub()
   qos_profile.reliability(rclcpp::ReliabilityPolicy::Reliable);
   qos_profile.durability(rclcpp::DurabilityPolicy::TransientLocal);
   sub_gnss_ = create_subscription<sensor_msgs::msg::NavSatFix>(
-      "fix", 10, std::bind(&EmbedGnss2MapNode::gnssCb, this, std::placeholders::_1));
+    "fix", 10, std::bind(&EmbedGnss2MapNode::gnssCb, this, std::placeholders::_1));
   sub_map_ = create_subscription<nav_msgs::msg::OccupancyGrid>(
-      "map", qos_profile, std::bind(&EmbedGnss2MapNode::mapCb, this, std::placeholders::_1));
+    "map", qos_profile, std::bind(&EmbedGnss2MapNode::mapCb, this, std::placeholders::_1));
   sub_robot_pose_ = create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-      "initialpose", 1, std::bind(&EmbedGnss2MapNode::getRobotPose, this, std::placeholders::_1));
+    "initialpose", 1, std::bind(&EmbedGnss2MapNode::getRobotPose, this, std::placeholders::_1));
 }
 
 void EmbedGnss2MapNode::initTimer()
 {
   debug_timer_ = create_wall_timer(
-      100ms, std::bind(&EmbedGnss2MapNode::getMapIndexFromRobotPoseDebugTimerCb, this));
+    100ms, std::bind(&EmbedGnss2MapNode::getMapIndexFromRobotPoseDebugTimerCb, this));
 }
 
 void EmbedGnss2MapNode::setParam() { declare_parameter("output_rosbag_path", "map_with_gnss"); }
@@ -48,8 +48,7 @@ void EmbedGnss2MapNode::getParam()
 
 void EmbedGnss2MapNode::gnssCb(sensor_msgs::msg::NavSatFix::ConstSharedPtr msg)
 {
-  if (get_robot_pose_)
-  {
+  if (get_robot_pose_) {
     gnss_ = *msg;
     auto index = getMapIndexFromRobotPose();
     embedGnss2Map(index);
@@ -58,8 +57,7 @@ void EmbedGnss2MapNode::gnssCb(sensor_msgs::msg::NavSatFix::ConstSharedPtr msg)
 
 void EmbedGnss2MapNode::getMapIndexFromRobotPoseDebugTimerCb()
 {
-  if (get_robot_pose_)
-  {
+  if (get_robot_pose_) {
     auto index = getMapIndexFromRobotPose();
     getMapIndexFromRobotPoseDebug();
     //   embedGnss2Map(index);
@@ -67,7 +65,7 @@ void EmbedGnss2MapNode::getMapIndexFromRobotPoseDebugTimerCb()
 }
 
 void EmbedGnss2MapNode::getRobotPose(
-    geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr msg)
+  geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr msg)
 {
   current_robot_pose_.header = msg->header;
   current_robot_pose_.pose = msg->pose.pose;
@@ -88,16 +86,14 @@ void EmbedGnss2MapNode::getMapIndexFromRobotPoseDebug()
 
   Eigen::Vector2d target(current_robot_pose_.pose.position.x, current_robot_pose_.pose.position.y);
 
-  for (auto& data : map.data) data = 1;
+  for (auto & data : map.data) data = 1;
 
   for (auto y = 0; y < map_.info.height; ++y)
-    for (auto x = 0; x < map_.info.width; ++x)
-    {
+    for (auto x = 0; x < map_.info.width; ++x) {
       Eigen::Vector2d reference(x * map_.info.resolution, y * map_.info.resolution);
       auto l2_norm = (target - reference).norm();
 
-      if (l2_norm < 0.5)
-      {
+      if (l2_norm < 0.5) {
         auto index = y * map_.info.width + x;
         map.data[index] = 99;
       }
@@ -134,8 +130,9 @@ void EmbedGnss2MapNode::publishMapWithGnss()
   int map_size = map_with_gnss_.info.width * map_with_gnss_.info.height;
   occupancy_grid.data.resize(map_size);
 
-  std::copy(std::begin(map_with_gnss_.data), std::end(map_with_gnss_.data),
-            std::begin(occupancy_grid.data));
+  std::copy(
+    std::begin(map_with_gnss_.data), std::end(map_with_gnss_.data),
+    std::begin(occupancy_grid.data));
 
   pub_map_with_gnss_->publish(occupancy_grid);
 }
@@ -146,15 +143,12 @@ void EmbedGnss2MapNode::writeRosbag()
   storage_options.uri = output_rosbag_path_;
   storage_options.storage_id = "sqlite3";
 
-  try
-  {
+  try {
     if (not isDirectoryPresent(output_rosbag_path_))
       writer_->open(storage_options);
     else
       writer_->open(avoidDirectoryNameCollision(output_rosbag_path_));
-  }
-  catch (const std::exception& e)
-  {
+  } catch (const std::exception & e) {
     std::cerr << "Caught an exception: " << e.what() << '\n';
   }
 
@@ -169,15 +163,13 @@ void EmbedGnss2MapNode::writeRosbag()
   writer_->write(message, topic_metadata.name, timestamp);
 }
 
-std::string EmbedGnss2MapNode::avoidDirectoryNameCollision(std::string& output_rosbag_path)
+std::string EmbedGnss2MapNode::avoidDirectoryNameCollision(std::string & output_rosbag_path)
 {
   int index = -1;
-  while (isDirectoryPresent(output_rosbag_path))
-  {
+  while (isDirectoryPresent(output_rosbag_path)) {
     std::regex pattern(".*_(\\d+)$");
     std::smatch match;
-    if (std::regex_match(output_rosbag_path, pattern))
-    {
+    if (std::regex_match(output_rosbag_path, pattern)) {
       std::regex pattern("_(\\d+)$");
       std::regex_search(output_rosbag_path, match, pattern);
       index = std::stoi(match[1].str());
@@ -190,7 +182,7 @@ std::string EmbedGnss2MapNode::avoidDirectoryNameCollision(std::string& output_r
   return output_rosbag_path;
 }
 
-bool EmbedGnss2MapNode::isDirectoryPresent(std::string& dir_path_str)
+bool EmbedGnss2MapNode::isDirectoryPresent(std::string & dir_path_str)
 {
   std::filesystem::path dir_path(dir_path_str);
 
@@ -201,7 +193,7 @@ bool EmbedGnss2MapNode::isDirectoryPresent(std::string& dir_path_str)
 
 }  // namespace embed_gnss2map
 
-int main(int argc, char* argv[])
+int main(int argc, char * argv[])
 {
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<embed_gnss2map::EmbedGnss2MapNode>());
