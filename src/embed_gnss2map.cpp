@@ -140,9 +140,8 @@ void EmbedGnss2MapNode::publishMapWithGnss()
   int map_size = map_with_gnss_.info.width * map_with_gnss_.info.height;
   occupancy_grid.data.resize(map_size);
 
-  std::copy(
-    std::begin(map_with_gnss_.data), std::end(map_with_gnss_.data),
-    std::begin(occupancy_grid.data));
+  std::copy(std::begin(map_.data), std::end(map_.data), std::begin(occupancy_grid.data));
+  std::copy(std::begin(map_.data), std::end(map_.data), std::begin(map_with_gnss_.data));
 
   pub_map_with_gnss_->publish(occupancy_grid);
 }
