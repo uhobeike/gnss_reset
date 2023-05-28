@@ -11,6 +11,9 @@
 #include "rclcpp/rclcpp.hpp"
 #include "rosbag2_cpp/writer.hpp"
 #include "sensor_msgs/msg/nav_sat_fix.hpp"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.hpp"
+#include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_listener.h"
 
 namespace embed_gnss2map
 {
@@ -23,10 +26,11 @@ public:
 protected:
   void initPubSub();
   void initTimer();
+  void initTf();
   void setParam();
   void getParam();
 
-  void getRobotPose(geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr msg);
+  void getRobotPose(geometry_msgs::msg::PoseStamped & current_robot_pose);
 
   uint64_t getMapIndexFromRobotPose();
   void getMapIndexFromRobotPoseDebug();
@@ -48,9 +52,10 @@ private:
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr sub_robot_pose_;
 
   rclcpp::TimerBase::SharedPtr debug_timer_;
+  rclcpp::Clock::SharedPtr clock_;
 
-  std::shared_ptr<rosbag2_cpp::Writer> writer_;
-  std::shared_ptr<rosbag2_cpp::Writer> writer_;
+  std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+  std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
   std::shared_ptr<rosbag2_cpp::Writer> writer_;
 
   sensor_msgs::msg::NavSatFix gnss_;
