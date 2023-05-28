@@ -11,15 +11,21 @@ using namespace std::chrono_literals;
 
 namespace embed_gnss2map
 {
-EmbedGnss2MapNode::EmbedGnss2MapNode() : Node("embed_gnss2map_node"), get_robot_pose_(false)
+EmbedGnss2MapNode::EmbedGnss2MapNode()
+: Node("embed_gnss2map_node"), get_robot_pose_(false), get_map_(false)
 {
   writer_ = std::make_shared<rosbag2_cpp::Writer>();
   clock_ = std::make_shared<rclcpp::Clock>(RCL_SYSTEM_TIME);
   initPubSub();
-  // initTimer();
   initTf();
   setParam();
   getParam();
+}
+
+EmbedGnss2MapNode::~EmbedGnss2MapNode()
+{
+  publishMapWithGnss();
+  writeRosbag();
 }
 
 void EmbedGnss2MapNode::initPubSub()
@@ -34,14 +40,6 @@ void EmbedGnss2MapNode::initPubSub()
     "gnss/fix", 10, std::bind(&EmbedGnss2MapNode::gnssCb, this, std::placeholders::_1));
   sub_map_ = create_subscription<nav_msgs::msg::OccupancyGrid>(
     "map", qos_profile, std::bind(&EmbedGnss2MapNode::mapCb, this, std::placeholders::_1));
-  // sub_robot_pose_ = create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-  //   "initialpose", 1, std::bind(&EmbedGnss2MapNode::getRobotPose, this, std::placeholders::_1));
-}
-
-void EmbedGnss2MapNode::initTimer()
-{
-  debug_timer_ = create_wall_timer(
-    100ms, std::bind(&EmbedGnss2MapNode::getMapIndexFromRobotPoseDebugTimerCb, this));
 }
 
 void EmbedGnss2MapNode::initTf()
@@ -60,20 +58,11 @@ void EmbedGnss2MapNode::getParam()
 void EmbedGnss2MapNode::gnssCb(sensor_msgs::msg::NavSatFix::ConstSharedPtr msg)
 {
   getRobotPose(current_robot_pose_);
-  if (get_robot_pose_) {
+  if (get_robot_pose_ && get_map_) {
     gnss_ = *msg;
-    // auto index = getMapIndexFromRobotPose();
-    getMapIndexFromRobotPoseDebug();
-    // embedGnss2Map(index);
-  }
-}
-
-void EmbedGnss2MapNode::getMapIndexFromRobotPoseDebugTimerCb()
-{
-  if (get_robot_pose_) {
     auto index = getMapIndexFromRobotPose();
-    getMapIndexFromRobotPoseDebug();
-    //   embedGnss2Map(index);
+    getMapIndexFromRobotPoseDebug(index);
+    embedGnss2Map(index);
   }
 }
 
@@ -109,27 +98,18 @@ uint64_t EmbedGnss2MapNode::getMapIndexFromRobotPose()
   return grid_y * map_.info.width + grid_x;
 }
 
-void EmbedGnss2MapNode::getMapIndexFromRobotPoseDebug()
+void EmbedGnss2MapNode::getMapIndexFromRobotPoseDebug(int index)
 {
-  auto map = map_;
+  static bool once_flag = true;
 
-  Eigen::Vector2d target(
-    fabs(current_robot_pose_.pose.position.x), fabs(current_robot_pose_.pose.position.y));
+  if (once_flag) {
+    for (auto & data : map_.data) data = 1;
+    once_flag = false;
+  }
 
-  for (auto & data : map.data) data = 1;
+  map_.data[index] = 99;
 
-  for (auto y = 0; y < map_.info.height; ++y)
-    for (auto x = 0; x < map_.info.width; ++x) {
-      Eigen::Vector2d reference(x * map_.info.resolution, y * map_.info.resolution);
-      auto l2_norm = (target - reference).norm();
-
-      if (l2_norm < 0.5) {
-        auto index = y * map_.info.width + x;
-        map.data[index] = 99;
-      }
-    }
-
-  pub_debug_map_->publish(map);
+  pub_debug_map_->publish(map_);
 }
 
 void EmbedGnss2MapNode::embedGnss2Map(uint64_t index) { map_with_gnss_.gnss_data[index] = gnss_; }
@@ -142,10 +122,10 @@ void EmbedGnss2MapNode::mapCb(nav_msgs::msg::OccupancyGrid::ConstSharedPtr msg)
   map_with_gnss_.info = msg->info;
   int map_size = msg->info.width * msg->info.height;
   map_with_gnss_.data.resize(map_size);
+  map_with_gnss_.gnss_data.resize(map_size);
   std::copy(std::begin(msg->data), std::end(msg->data), std::begin(map_with_gnss_.data));
 
-  // publishMapWithGnss();
-  // writeRosbag();
+  get_map_ = true;
 }
 
 void EmbedGnss2MapNode::publishMapWithGnss()
