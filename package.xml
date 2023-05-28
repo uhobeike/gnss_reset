@@ -11,9 +11,10 @@
 
   <depend>rclcpp</depend>
   <depend>Eigen3</depend>
-  <depend>ros2launch</depend>
+  <depend>tf2_ros</depend>
   <depend>rosbag2_cpp</depend>
   <depend>gnss_reset_msgs</depend>
+  <depend>tf2_geometry_msgs</depend>
 
   <depend>backword_ros</depend>
 
