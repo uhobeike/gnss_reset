@@ -4,12 +4,11 @@
 #ifndef GNSS_RESET__EMBED_GNSS2MAP_HPP_
 #define GNSS_RESET__EMBED_GNSS2MAP_HPP_
 
-#include "rclcpp/rclcpp.hpp"
-
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 #include "gnss_reset_msgs/msg/occupancy_grid_with_nav_sat_fix.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
+#include "rclcpp/rclcpp.hpp"
 #include "rosbag2_cpp/writer.hpp"
 #include "sensor_msgs/msg/nav_sat_fix.hpp"
 
@@ -18,10 +17,10 @@ namespace embed_gnss2map
 
 class EmbedGnss2MapNode : public rclcpp::Node
 {
- public:
+public:
   EmbedGnss2MapNode();
 
- protected:
+protected:
   void initPubSub();
   void initTimer();
   void setParam();
@@ -38,10 +37,10 @@ class EmbedGnss2MapNode : public rclcpp::Node
   void mapCb(nav_msgs::msg::OccupancyGrid::ConstSharedPtr msg);
   void publishMapWithGnss();
   void writeRosbag();
-  std::string avoidDirectoryNameCollision(std::string& output_rosbag_path);
-  bool isDirectoryPresent(std::string& dir_path);
+  std::string avoidDirectoryNameCollision(std::string & output_rosbag_path);
+  bool isDirectoryPresent(std::string & dir_path);
 
- private:
+private:
   rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_map_with_gnss_;
   rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_debug_map_;
   rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr sub_gnss_;
@@ -50,6 +49,8 @@ class EmbedGnss2MapNode : public rclcpp::Node
 
   rclcpp::TimerBase::SharedPtr debug_timer_;
 
+  std::shared_ptr<rosbag2_cpp::Writer> writer_;
+  std::shared_ptr<rosbag2_cpp::Writer> writer_;
   std::shared_ptr<rosbag2_cpp::Writer> writer_;
 
   sensor_msgs::msg::NavSatFix gnss_;
