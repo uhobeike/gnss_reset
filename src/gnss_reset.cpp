@@ -3,6 +3,8 @@
 
 #include "gnss_reset/gnss_reset.hpp"
 
+#include <Eigen/Dense>
+
 #include "rosbag2_cpp/converter_interfaces/serialization_format_converter.hpp"
 #include "rosbag2_cpp/typesupport_helpers.hpp"
 
@@ -10,19 +12,23 @@ using namespace std::chrono_literals;
 
 namespace gnss_reset
 {
-GnssResetNode::GnssResetNode() : Node("gnss_reset_node")
+GnssResetNode::GnssResetNode() : Node("gnss_reset_node"), get_map_(false)
 {
   reader_ = std::make_shared<rosbag2_cpp::Reader>();
   setParam();
   getParam();
-  initPublisher();
-  initTimer();
+  initPubSub();
   readRosbag();
+  publishMapWithGnss();
 }
 
-void GnssResetNode::initPublisher()
+void GnssResetNode::initPubSub()
 {
   pub_map_with_gnss_ = create_publisher<nav_msgs::msg::OccupancyGrid>("rosbag_to_map_with_gnss", 1);
+  pub_debug_map_ = create_publisher<nav_msgs::msg::OccupancyGrid>("debug_reset", 1);
+
+  sub_gnss_ = create_subscription<sensor_msgs::msg::NavSatFix>(
+    "gnss/fix", 10, std::bind(&GnssResetNode::gnssCb, this, std::placeholders::_1));
 }
 
 void GnssResetNode::setParam() { declare_parameter("read_rosbag_path", "map_with_gnss"); }
@@ -30,6 +36,54 @@ void GnssResetNode::setParam() { declare_parameter("read_rosbag_path", "map_with
 void GnssResetNode::getParam()
 {
   read_rosbag_path_ = get_parameter("read_rosbag_path").as_string();
+}
+
+void GnssResetNode::gnssCb(sensor_msgs::msg::NavSatFix::ConstSharedPtr msg)
+{
+  if (get_map_) {
+    static bool once_flag = true;
+    if (once_flag) {
+      publishMapWithGnss();
+      once_flag = false;
+    }
+    gnssReset(*msg);
+  }
+}
+
+void GnssResetNode::gnssReset(sensor_msgs::msg::NavSatFix msg)
+{
+  auto index = findNearestLatLong(msg);
+  debugIndexToMap(index);
+}
+
+void GnssResetNode::debugIndexToMap(int index)
+{
+  auto map = map_;
+  static bool once_flag = true;
+  if (once_flag) {
+    for (auto & data : map_.data) data = 1;
+    once_flag = false;
+  }
+
+  map.data[index] = 99;
+
+  pub_debug_map_->publish(map);
+}
+
+unsigned int GnssResetNode::findNearestLatLong(sensor_msgs::msg::NavSatFix target_gnss_data)
+{
+  Eigen::Vector2d target_pose_mat(target_gnss_data.latitude, target_gnss_data.longitude);
+
+  std::vector<double> l2_norm_vec;
+  for (auto gnss_data : map_index_and_gnss_data_from_rosbag_) {
+    Eigen::Vector2d reference_mat(gnss_data.second.latitude, gnss_data.second.longitude);
+    l2_norm_vec.push_back((target_pose_mat - reference_mat).norm());
+  }
+
+  auto min_element_iter = std::min_element(l2_norm_vec.begin(), l2_norm_vec.end());
+  unsigned int min_index = std::distance(l2_norm_vec.begin(), min_element_iter);
+
+  return map_index_and_gnss_data_from_rosbag_[min_index].first;
 }
 
 void GnssResetNode::readRosbag()
@@ -65,6 +119,18 @@ void GnssResetNode::readRosbag()
       map_with_gnss_ = map_with_gnss;
     }
   }
+
+  auto index = 0;
+  for (auto & gnss : map_with_gnss_.gnss_data) {
+    if (gnss.header.stamp.sec != 0) {
+      std::pair<unsigned int, sensor_msgs::msg::NavSatFix> map_index_and_gnss_data;
+      map_index_and_gnss_data.first = index;
+      map_index_and_gnss_data.second = gnss;
+      map_index_and_gnss_data_from_rosbag_.push_back(map_index_and_gnss_data);
+    }
+    ++index;
+  }
+  get_map_ = true;
 }
 
 void GnssResetNode::publishMapWithGnss()
@@ -83,14 +149,8 @@ void GnssResetNode::publishMapWithGnss()
     std::begin(map_with_gnss_.data), std::end(map_with_gnss_.data),
     std::begin(occupancy_grid.data));
 
+  map_ = occupancy_grid;
   pub_map_with_gnss_->publish(occupancy_grid);
-}
-
-void GnssResetNode::on_timer() { publishMapWithGnss(); }
-
-void GnssResetNode::initTimer()
-{
-  timer_ = create_wall_timer(1000ms, std::bind(&GnssResetNode::on_timer, this));
 }
 
 }  // namespace gnss_reset
