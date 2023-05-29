@@ -4,41 +4,50 @@
 #ifndef GNSS_RESET__GNSS_RESET_HPP_
 #define GNSS_RESET__GNSS_RESET_HPP_
 
-#include "rclcpp/rclcpp.hpp"
-
-#include "rosbag2_cpp/converter_options.hpp"
-#include "rosbag2_cpp/reader.hpp"
-
 #include "gnss_reset_msgs/msg/occupancy_grid_with_nav_sat_fix.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "rosbag2_cpp/converter_options.hpp"
+#include "rosbag2_cpp/reader.hpp"
+#include "sensor_msgs/msg/nav_sat_fix.hpp"
 
 namespace gnss_reset
 {
 
 class GnssResetNode : public rclcpp::Node
 {
- public:
+public:
   GnssResetNode();
 
- protected:
-  void initPublisher();
-  void initTimer();
-  void on_timer();
+protected:
+  void initPubSub();
   void setParam();
   void getParam();
+
+  void gnssCb(sensor_msgs::msg::NavSatFix::ConstSharedPtr msg);
 
   void readRosbag();
   void publishMapWithGnss();
 
- private:
+  void gnssReset(sensor_msgs::msg::NavSatFix msg);
+  unsigned int findNearestLatLong(sensor_msgs::msg::NavSatFix target_gnss_data);
+
+  void debugIndexToMap(int index);
+
+private:
   rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_map_with_gnss_;
+  rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr sub_gnss_;
+  rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_debug_map_;
 
   std::shared_ptr<rosbag2_cpp::Reader> reader_;
-  rclcpp::TimerBase::SharedPtr timer_;
 
   gnss_reset_msgs::msg::OccupancyGridWithNavSatFix map_with_gnss_;
+  std::vector<std::pair<unsigned int, sensor_msgs::msg::NavSatFix>>
+    map_index_and_gnss_data_from_rosbag_;
+  nav_msgs::msg::OccupancyGrid map_;
 
   std::string read_rosbag_path_;
+  bool get_map_;
 };
 
 }  // namespace gnss_reset
