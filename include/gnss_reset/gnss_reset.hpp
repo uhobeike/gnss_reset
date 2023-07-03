@@ -21,6 +21,7 @@ public:
 
 protected:
   void initPubSub();
+  void initTimer();
   void setParam();
   void getParam();
 
@@ -38,6 +39,8 @@ private:
   rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_map_with_gnss_;
   rclcpp::Subscription<sensor_msgs::msg::NavSatFix>::SharedPtr sub_gnss_;
   rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_debug_map_;
+
+  rclcpp::TimerBase::SharedPtr timer_;
 
   std::shared_ptr<rosbag2_cpp::Reader> reader_;
 

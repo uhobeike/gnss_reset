@@ -18,8 +18,8 @@ GnssResetNode::GnssResetNode() : Node("gnss_reset_node"), get_map_(false)
   setParam();
   getParam();
   initPubSub();
+  initTimer();
   readRosbag();
-  publishMapWithGnss();
 }
 
 void GnssResetNode::initPubSub()
@@ -29,6 +29,11 @@ void GnssResetNode::initPubSub()
 
   sub_gnss_ = create_subscription<sensor_msgs::msg::NavSatFix>(
     "gnss/fix", 10, std::bind(&GnssResetNode::gnssCb, this, std::placeholders::_1));
+}
+
+void GnssResetNode::initTimer()
+{
+  timer_ = create_wall_timer(1s, std::bind(&GnssResetNode::publishMapWithGnss, this));
 }
 
 void GnssResetNode::setParam() { declare_parameter("read_rosbag_path", "map_with_gnss"); }
@@ -59,11 +64,7 @@ void GnssResetNode::gnssReset(sensor_msgs::msg::NavSatFix msg)
 void GnssResetNode::debugIndexToMap(int index)
 {
   auto map = map_;
-  static bool once_flag = true;
-  if (once_flag) {
-    for (auto & data : map_.data) data = 1;
-    once_flag = false;
-  }
+  for (auto & data : map.data) data = 1;
 
   map.data[index] = 99;
 
