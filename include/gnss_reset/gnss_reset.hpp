@@ -10,6 +10,9 @@
 #include "rosbag2_cpp/converter_options.hpp"
 #include "rosbag2_cpp/reader.hpp"
 #include "sensor_msgs/msg/nav_sat_fix.hpp"
+#include "tf2_ros/buffer.h"
+#include "tf2_ros/transform_broadcaster.h"
+#include "tf2_ros/transform_listener.h"
 
 namespace gnss_reset
 {
@@ -22,6 +25,7 @@ public:
 protected:
   void initPubSub();
   void initTimer();
+  void initTf();
   void setParam();
   void getParam();
 
@@ -29,6 +33,7 @@ protected:
 
   void readRosbag();
   void publishMapWithGnss();
+  void odom2map();
 
   void gnssReset(sensor_msgs::msg::NavSatFix msg);
   unsigned int findNearestLatLong(sensor_msgs::msg::NavSatFix target_gnss_data);
@@ -42,6 +47,11 @@ private:
 
   rclcpp::TimerBase::SharedPtr timer_;
 
+  std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+  std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
+  std::shared_ptr<tf2_ros::Buffer> tf_buffer_;
+  tf2::Transform latest_tf_;
+
   std::shared_ptr<rosbag2_cpp::Reader> reader_;
 
   gnss_reset_msgs::msg::OccupancyGridWithNavSatFix map_with_gnss_;
@@ -51,6 +61,7 @@ private:
 
   std::string read_rosbag_path_;
   bool get_map_;
+  std_msgs::msg::Header gnss_stamp_;
 };
 
 }  // namespace gnss_reset
