@@ -33,12 +33,10 @@ protected:
 
   void readRosbag();
   void publishMapWithGnss();
-  void odom2map();
+  void odom2map(int index);
 
   void gnssReset(sensor_msgs::msg::NavSatFix msg);
   unsigned int findNearestLatLong(sensor_msgs::msg::NavSatFix target_gnss_data);
-
-  void debugIndexToMap(int index);
 
 private:
   rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr pub_map_with_gnss_;
@@ -62,6 +60,8 @@ private:
   std::string read_rosbag_path_;
   bool get_map_;
   std_msgs::msg::Header gnss_stamp_;
+
+  std::map<std::string, std::pair<double, double>> index_to_pose_;
 };
 
 }  // namespace gnss_reset

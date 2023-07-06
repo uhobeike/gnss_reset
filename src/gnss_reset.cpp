@@ -76,7 +76,6 @@ void GnssResetNode::gnssCb(sensor_msgs::msg::NavSatFix::ConstSharedPtr msg)
   if (get_map_) {
     static bool once_flag = true;
     if (once_flag) {
-      publishMapWithGnss();
       initTf();
       once_flag = false;
     }
@@ -87,27 +86,19 @@ void GnssResetNode::gnssCb(sensor_msgs::msg::NavSatFix::ConstSharedPtr msg)
 void GnssResetNode::gnssReset(sensor_msgs::msg::NavSatFix msg)
 {
   auto index = findNearestLatLong(msg);
-  debugIndexToMap(index);
-  odom2map();
+  odom2map(index);
 }
 
-void GnssResetNode::debugIndexToMap(int index)
-{
-  auto map = map_;
-  for (auto & data : map.data) data = 1;
-
-  map.data[index] = 99;
-
-  pub_debug_map_->publish(map);
-}
-
-void GnssResetNode::odom2map()
+void GnssResetNode::odom2map(int index)
 {
   geometry_msgs::msg::PoseStamped odom_to_map;
   try {
     tf2::Quaternion q;
     q.setRPY(0, 0, 0);
-    tf2::Transform tmp_tf(q, tf2::Vector3(9.45171, 11.5139, 0.0));
+    tf2::Transform tmp_tf(
+      q, tf2::Vector3(
+           index_to_pose_[std::to_string(index)].first,
+           index_to_pose_[std::to_string(index)].second, 0.0));
 
     geometry_msgs::msg::PoseStamped tmp_tf_stamped;
     tmp_tf_stamped.header.frame_id = "base_footprint";
@@ -122,7 +113,7 @@ void GnssResetNode::odom2map()
   }
 
   auto stamp = tf2_ros::fromMsg(gnss_stamp_.stamp);
-  tf2::TimePoint transform_tolerance_ = stamp + tf2::durationFromSec(1.0);
+  tf2::TimePoint transform_tolerance_ = stamp + tf2::durationFromSec(0);
 
   tf2::impl::Converter<true, false>::convert(odom_to_map.pose, latest_tf_);
   geometry_msgs::msg::TransformStamped tmp_tf_stamped;
@@ -192,6 +183,15 @@ void GnssResetNode::readRosbag()
       map_index_and_gnss_data_from_rosbag_.push_back(map_index_and_gnss_data);
     }
     ++index;
+  }
+
+  for (unsigned int y = 0; y < map_with_gnss_.info.height; y++) {
+    for (unsigned int x = 0; x < map_with_gnss_.info.width; x++) {
+      unsigned int index = x + (map_with_gnss_.info.height - y - 1) * map_with_gnss_.info.width;
+      index_to_pose_[std::to_string(index)] = std::pair(
+        x * map_with_gnss_.info.resolution,
+        (map_with_gnss_.info.height - y) * map_with_gnss_.info.resolution);
+    }
   }
   get_map_ = true;
 }
